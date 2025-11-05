@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quick Study Flashcards</title>
+  <style>
+    :root {
+      --bg: #0f172a;        /* slate-900 */
+      --fg: #e2e8f0;        /* slate-200 */
+      --muted: #94a3b8;     /* slate-400 */
+      --accent: #22c55e;    /* green-500 */
+      --card: #111827;      /* gray-900 */
+      --card2: #1f2937;     /* gray-800 */
+      --btn: #334155;       /* slate-700 */
+      --btn2: #1e293b;      /* slate-800 */
+      --border: #334155;
+      --shadow: 0 10px 30px rgba(0,0,0,0.4);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(180deg, var(--bg), #0b1227);
+      color: var(--fg);
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    header, footer {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    footer { border-top: 1px solid var(--border); border-bottom: none; justify-content: center; gap: 18px; }
+    header h1 { font-size: clamp(18px, 3.2vw, 22px); margin: 0; }
+    header .right { display: flex; gap: 8px; align-items: center; }
+    main {
+      display: grid;
+      place-items: center;
+      padding: 20px 16px 12px;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 860px;
+      display: grid;
+      gap: 16px;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+    }
+    .controls button, .controls select {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--btn2);
+      color: var(--fg);
+      padding: 10px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform .06s ease, background .2s ease, border-color .2s ease;
+    }
+    .controls button:hover { transform: translateY(-1px); background: var(--btn); }
+    .controls button:active { transform: translateY(0); }
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .status strong { color: var(--fg); }
+    .card-area {
+      perspective: 1200px;
+      display: grid;
+      place-items: center;
+      min-height: clamp(280px, 40vh, 420px);
+    }
+    .card {
+      width: min(92vw, 860px);
+      min-height: clamp(240px, 34vh, 360px);
+      background: linear-gradient(135deg, var(--card), var(--card2));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: grid;
+      place-items: center;
+      padding: clamp(14px, 3vw, 28px);
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.5s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+    .card.flipped { transform: rotateY(180deg); }
+    .side {
+      position: absolute;
+      inset: 0;
+      padding: clamp(14px, 3vw, 28px);
+      display: grid;
+      place-items: center;
+      backface-visibility: hidden;
+      text-align: center;
+    }
+    .front .label, .back .label {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .front .content, .back .content {
+      font-size: clamp(18px, 3.2vw, 28px);
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .back { transform: rotateY(180deg); }
+    .hint {
+      position: absolute;
+      bottom: 10px;
+      right: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    details.importer {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.02);
+    }
+    details.importer summary {
+      cursor: pointer;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      color: var(--fg);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      resize: vertical;
+    }
+    .mini {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    @media (max-width: 680px) {
+      .controls { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Quick Study Flashcards</h1>
+    <div class="right">
+      <label for="deckSelect" class="mini">Deck:</label>
+      <select id="deckSelect" title="Choose a deck"></select>
+    </div>
+  </header>
+  <main>
+    <div class="wrap">
+      <div class="status">
+        <div>Card: <strong id="idx">1</strong>/<strong id="total">0</strong></div>
+        <div>Press <strong>Space</strong> to flip • <strong>←/→</strong> to move</div>
+      </div>
+
+      <div class="card-area">
+        <div id="card" class="card" tabindex="0" role="button" aria-label="Flashcard. Click or press space to flip.">
+          <div class="side front">
+            <div class="label">Question</div>
+            <div class="content" id="frontText"></div>
+            <div class="hint">Click / Space to flip</div>
+          </div>
+          <div class="side back">
+            <div class="label">Answer</div>
+            <div class="content" id="backText"></div>
+            <div class="hint">Click to flip back</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="prevBtn" title="Previous (←)">← Prev</button>
+        <button id="flipBtn" title="Flip (Space)">Flip</button>
+        <button id="nextBtn" title="Next (→)">Next →</button>
+        <button id="shuffleBtn" title="Shuffle deck">Shuffle</button>
+        <button id="resetBtn" title="Reset to first card">Reset</button>
+        <button id="saveBtn" title="Save deck to this browser">Save</button>
+      </div>
+
+      <details class="importer">
+        <summary><strong>Optional:</strong> Paste CSV to build a deck (Question,Answer per line)</summary>
+        <textarea id="csvInput" placeholder="Question,Answer&#10;What is 3×3?,9&#10;Capital of Puerto Rico?,San Juan"></textarea>
+        <div class="mini">After pasting, click “Load CSV as Deck”. You can also edit the built-in deck directly in code (see instructions below).</div>
+        <div style="display:flex; gap:10px; margin-top:8px;">
+          <button id="loadCsvBtn">Load CSV as Deck</button>
+          <button id="exportBtn">Export Current Deck (JSON)</button>
+        </div>
+      </details>
+
+      <details class="importer">
+        <summary>How to customize quickly</summary>
+        <div class="mini">
+          1) Easiest: paste your questions and answers above, click “Load CSV as Deck”, then “Save”.<br/>
+          2) Or open this file in a code editor and edit the <code>BUILT_IN_DECKS</code> array at the top of the script.<br/>
+          3) To share on the web in minutes: upload this <code>index.html</code> to GitHub and enable GitHub Pages (or drag-drop to Netlify).
+        </div>
+      </details>
+    </div>
+  </main>
+  <footer>
+    <div class="mini">Made for quick studying. Good luck!</div>
+  </footer>
+
+  <script>
+  // === 1) Put your content here if you want it baked into the file ===
+  // Each deck is { name: "Deck Name", cards: [ {q: "...", a: "..."}, ... ] }
+  const BUILT_IN_DECKS = [
+  {
+    "name": "Vocabulario Capítulo 4",
+    "cards": [
+      {
+        "q": "Cultura",
+        "a": "Culture — A set of historical, social, linguistic, political, or economic elements that unite a human group."
+      },
+      {
+        "q": "Raza",
+        "a": "Race — A European‑origin term that classifies people by skin color."
+      },
+      {
+        "q": "Etnia",
+        "a": "Ethnicity — Defines human groups by their language, celebrations, music, and traditional foods."
+      },
+      {
+        "q": "Discriminación racial",
+        "a": "Racial discrimination — Forms of contempt toward others based on skin color."
+      },
+      {
+        "q": "Regiones culturales",
+        "a": "Cultural regions — The Americas are divided into two cultural regions: Anglo‑America and Latin America."
+      },
+      {
+        "q": "Demografía",
+        "a": "Demography — The science that studies the structure, evolution, characteristics, and size of the human population."
+      },
+      {
+        "q": "Estado",
+        "a": "State — A sovereign country with its own government."
+      },
+      {
+        "q": "Inocuo",
+        "a": "Harmless — Something that does not harm health."
+      },
+      {
+        "q": "Indicadores",
+        "a": "Indicators — Data or information used to evaluate a situation or phenomenon."
+      },
+      {
+        "q": "Asistencia Neta",
+        "a": "Net attendance — The number of students who actually attend school."
+      },
+      {
+        "q": "Nivel de vida",
+        "a": "Standard of living — The degree of material well‑being enjoyed by individuals and the population in general within a country or region."
+      },
+      {
+        "q": "Tasa de natalidad",
+        "a": "Birth rate — The number of births in a country per thousand inhabitants in one year."
+      },
+      {
+        "q": "Tasa de alfabetización",
+        "a": "Literacy rate — The percentage of people in a country who can read and write."
+      },
+      {
+        "q": "Tasa de mortalidad",
+        "a": "Mortality rate — The number of deaths per thousand inhabitants in one year."
+      },
+      {
+        "q": "Esperanza de vida",
+        "a": "Life expectancy — The number of years people born in a certain society are expected to live."
+      },
+      {
+        "q": "Índice de Desarrollo Humano (IDH)",
+        "a": "Human Development Index (HDI) — Indicates a country’s development level by combining life expectancy, per capita income, and education, expressed as a decimal from 0 to 0.9."
+      },
+      {
+        "q": "Migración",
+        "a": "Migration — The movement of people from their place of origin to change residence permanently."
+      },
+      {
+        "q": "Emigrante",
+        "a": "Emigrant — Someone who leaves their country of origin to live in another country."
+      },
+      {
+        "q": "Inmigrante",
+        "a": "Immigrant — Someone who arrives in a new country to live there."
+      },
+      {
+        "q": "Migración interregional",
+        "a": "Interregional migration — Movement between countries within the same continent."
+      },
+      {
+        "q": "Migración internacional",
+        "a": "International migration — Movement from one country to another."
+      },
+      {
+        "q": "Metrópolis",
+        "a": "Metropolis — Large cities."
+      },
+      {
+        "q": "Refugiados climáticos",
+        "a": "Climate refugees — People who migrate due to natural disasters in their country of origin."
+      },
+      {
+        "q": "Asilo",
+        "a": "Asylum — Protection granted by a state to a person or group suffering persecution in their home country, guaranteeing they will not be deported under any circumstances."
+      }
+    ]
+  }
+];
+
+  // === 2) Local storage keys ===
+  const LS_KEY_DECKS = "quickcards.decks";
+  const LS_KEY_ACTIVE = "quickcards.activeIndex";
+
+  // === 3) App state ===
+  let decks = loadDecks();
+  let activeDeckIndex = loadActiveIndex();
+  let idx = 0;
+  let flipped = false;
+
+  // === 4) DOM elements ===
+  const deckSelect = document.getElementById("deckSelect");
+  const idxEl = document.getElementById("idx");
+  const totalEl = document.getElementById("total");
+  const cardEl = document.getElementById("card");
+  const frontText = document.getElementById("frontText");
+  const backText  = document.getElementById("backText");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const flipBtn = document.getElementById("flipBtn");
+  const shuffleBtn = document.getElementById("shuffleBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const csvInput = document.getElementById("csvInput");
+  const loadCsvBtn = document.getElementById("loadCsvBtn");
+  const exportBtn = document.getElementById("exportBtn");
+
+  // === 5) Initialize ===
+  populateDeckSelect();
+  setDeck(activeDeckIndex);
+  render();
+
+  // === 6) Event listeners ===
+  cardEl.addEventListener("click", flip);
+  flipBtn.addEventListener("click", flip);
+  nextBtn.addEventListener("click", next);
+  prevBtn.addEventListener("click", prev);
+  shuffleBtn.addEventListener("click", shuffleDeck);
+  resetBtn.addEventListener("click", resetDeck);
+  saveBtn.addEventListener("click", saveDecks);
+  deckSelect.addEventListener("change", e => {
+    activeDeckIndex = Number(e.target.value);
+    saveActiveIndex();
+    idx = 0; flipped = false;
+    render();
+  });
+  loadCsvBtn.addEventListener("click", () => {
+    const text = csvInput.value.trim();
+    if (!text) return alert("Paste CSV first: each line as Question,Answer");
+    const parsed = parseCsv(text);
+    if (parsed.cards.length === 0) return alert("No valid rows found.");
+    const name = "My CSV Deck " + new Date().toLocaleString();
+    const deck = { name, cards: parsed.cards };
+    decks.push(deck);
+    activeDeckIndex = decks.length - 1;
+    idx = 0; flipped = false;
+    populateDeckSelect();
+    deckSelect.value = String(activeDeckIndex);
+    render();
+  });
+  exportBtn.addEventListener("click", () => {
+    const deck = decks[activeDeckIndex];
+    const blob = new Blob([JSON.stringify(deck, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = (deck?.name?.replace(/\s+/g, "_") || "deck") + ".json";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === " " || e.code === "Space") { e.preventDefault(); flip(); }
+    if (e.key === "ArrowRight") next();
+    if (e.key === "ArrowLeft")  prev();
+  });
+
+  // === 7) Functions ===
+  function populateDeckSelect() {
+    deckSelect.innerHTML = "";
+    decks.forEach((d, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = d.name || ("Deck " + (i+1));
+      deckSelect.appendChild(opt);
+    });
+  }
+
+  function setDeck(i) {
+    if (i < 0 || i >= decks.length) i = 0;
+    activeDeckIndex = i;
+    saveActiveIndex();
+  }
+
+  function render() {
+    const deck = decks[activeDeckIndex];
+    const total = deck?.cards?.length || 0;
+    totalEl.textContent = total;
+    if (total === 0) {
+      idxEl.textContent = 0;
+      frontText.textContent = "No cards in this deck yet.";
+      backText.textContent = "Use the CSV importer below, or edit BUILT_IN_DECKS in the code.";
+      cardEl.classList.remove("flipped");
+      return;
+    }
+    if (idx < 0) idx = 0;
+    if (idx >= total) idx = total - 1;
+    idxEl.textContent = idx + 1;
+    const card = deck.cards[idx];
+    frontText.textContent = card.q || "";
+    backText.textContent = card.a || "";
+    cardEl.classList.toggle("flipped", flipped);
+  }
+
+  function flip() { flipped = !flipped; render(); }
+  function next() { idx = (idx + 1) % (decks[activeDeckIndex].cards.length || 1); flipped = false; render(); }
+  function prev() { idx = (idx - 1 + (decks[activeDeckIndex].cards.length || 1)) % (decks[activeDeckIndex].cards.length || 1); flipped = false; render(); }
+  function resetDeck() { idx = 0; flipped = false; render(); }
+  function shuffleDeck() {
+    const arr = decks[activeDeckIndex].cards;
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    idx = 0; flipped = false; render();
+  }
+
+  function saveDecks() {
+    try {
+      localStorage.setItem(LS_KEY_DECKS, JSON.stringify(decks));
+      alert("Saved this deck to your browser. It will auto-load next time on this device.");
+    } catch (e) {
+      alert("Could not save to localStorage: " + e.message);
+    }
+  }
+  function loadDecks() {
+    try {
+      const raw = localStorage.getItem(LS_KEY_DECKS);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return structuredClone(BUILT_IN_DECKS);
+  }
+  function saveActiveIndex() { localStorage.setItem(LS_KEY_ACTIVE, String(activeDeckIndex)); }
+  function loadActiveIndex() {
+    const v = localStorage.getItem(LS_KEY_ACTIVE);
+    const n = Number(v);
+    return Number.isInteger(n) && n >= 0 ? n : 0;
+  }
+
+  function parseCsv(text) {
+    // Expect lines like: Question,Answer (commas inside quotes allowed)
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const cards = [];
+    for (const line of lines) {
+      const parts = splitCsvLine(line);
+      if (parts.length >= 2) {
+        const q = String(parts[0]).trim();
+        const a = String(parts.slice(1).join(",")).trim();
+        if (q && a) cards.push({ q, a });
+      }
+    }
+    return { cards };
+  }
+
+  function splitCsvLine(line) {
+    const out = [];
+    let cur = "";
+    let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else { inQ = !inQ; }
+      } else if (ch === "," && !inQ) {
+        out.push(cur); cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+  </script>
+</body>
+</html>
